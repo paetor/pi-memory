@@ -41,6 +41,9 @@ There is nothing to set up. Tell pi things like "remember that we use pnpm here"
 - `/memory` — show both scopes: files, sizes, what's injected vs. capped, trust state.
 - `/memory pages` — preview ClawVM-style typed pages derived from `MEMORY.md` and page-table sidecar status.
 - `/memory verify` — rebuild `page-table.jsonl` sidecars from current `MEMORY.md` files.
+- `/memory remember global|project <text>` — stage an append-only memory write in `writeback-journal.jsonl`.
+- `/memory flush` — validate/commit pending writeback operations and rebuild page tables.
+- `/memory faults` / `/memory traces` / `/memory trace <id>` — inspect memory faults and residency/writeback traces.
 - `/memory off` / `/memory on` — toggle injection for the current session.
 - `pi --no-memory` — start with injection disabled.
 
@@ -54,7 +57,11 @@ Optional `config.json` in either memory directory (project overrides global, lik
 {
   "enabled": true,
   "maxInjectLines": 200,
-  "maxInjectBytes": 8192
+  "maxInjectBytes": 8192,
+  "pageTableInjection": true,
+  "maxMemoryTokens": 4096,
+  "traceEnabled": true,
+  "strictWriteback": true
 }
 ```
 

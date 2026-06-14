@@ -102,6 +102,9 @@ Rationale:
 - `/memory` — show both scopes: file list, per-file size, injected vs capped bytes, page-table sidecar status, trust state, and absolute paths (so the user can open them).
 - `/memory pages` — preview the ClawVM-style typed pages currently derivable from `MEMORY.md`, and show whether `page-table.jsonl` exists/validates.
 - `/memory verify` — rebuild `page-table.jsonl` sidecars from current `MEMORY.md` files. This is the first lightweight ClawVM-style metadata layer; markdown remains canonical.
+- `/memory remember global|project <text>` — stage an append-only memory write in `writeback-journal.jsonl`.
+- `/memory flush` — validate/commit pending writeback operations and rebuild page tables.
+- `/memory faults` / `/memory traces` / `/memory trace <id>` — inspect residency/writeback faults and decision traces.
 - `/memory off | on` — toggle injection for the current session (in-memory flag; nothing written).
 - Also `pi.registerFlag("no-memory", { type: "boolean", default: false })` to start with injection disabled.
 
@@ -125,9 +128,13 @@ Optional `config.json` in each memory directory, project keys overriding global 
 
 ```json
 {
+  "enabled": true,
   "maxInjectLines": 200,
   "maxInjectBytes": 8192,
-  "enabled": true
+  "pageTableInjection": true,
+  "maxMemoryTokens": 4096,
+  "traceEnabled": true,
+  "strictWriteback": true
 }
 ```
 
@@ -141,10 +148,16 @@ Shipped as a **pi package** (research 04):
 pi-memory/
 ├── package.json
 ├── src/
-│   ├── index.ts        # default-export factory: wires events, command, flag
-│   ├── storage.ts      # scope resolution, lazy dirs, capped reads, mtime cache
-│   ├── inject.ts       # preamble + block assembly
-│   └── command.ts      # /memory
+│   ├── index.ts            # default-export factory: wires events, command, flag, lifecycle flush
+│   ├── storage.ts          # scope resolution, config, capped reads, mtime cache
+│   ├── inject.ts           # legacy preamble + capped block assembly
+│   ├── resident-inject.ts  # ClawVM-style resident-set prompt rendering
+│   ├── memory-domain.ts    # page/fidelity/fault domain vocabulary
+│   ├── page-table.ts       # page-table JSONL sidecar store
+│   ├── residency.ts        # deterministic resident-set selection policy
+│   ├── trace.ts            # bounded JSONL decision/fault traces
+│   ├── writeback.ts        # staged writeback journal and flush
+│   └── command.ts          # /memory commands
 ├── docs/
 │   ├── design.md
 │   └── research/
@@ -173,8 +186,9 @@ pi-memory/
 
 ## 10. Roadmap (post-v1)
 
-1. **Compaction-time capture:** observe `session_before_compact` (observation is free — returning nothing keeps default compaction, research 04) and mine `preparation.messagesToSummarize` via `serializeConversation()` with a cheap model to propose memory entries; deliver proposals as a `nextTurn` message for the agent to accept/edit.
-2. **`MEMORY.local.md`:** gitignored personal project-scope notes (the `CLAUDE.local.md` / `.aider.conf.yml` niche).
-3. **Decay metadata:** per-entry last-confirmed dates; `/memory stale` listing — frequency/time-informed *suggestions*, never automatic deletion (research 01).
-4. **Structured `memory` tool** if preamble-steered file edits prove unreliable in practice.
-5. **Cross-harness import:** read-only ingestion of `~/.claude/projects/<project>/memory/` for users migrating from Claude Code.
+1. **Reason-coded recall controller:** deterministic `RecallResult` API and `/memory recall <query>` that distinguishes `ok`, `no_match`, `denied`, `malformed`, `unavailable`, and `backend_error`.
+2. **Compaction-time capture:** observe `session_before_compact` and mine `preparation.messagesToSummarize` via `serializeConversation()` with a cheap model to propose staged writeback operations.
+3. **Topic-file page reconciliation:** parse linked topic files into pointer/structured pages so large procedures and evidence can remain out of the prompt until needed.
+4. **`MEMORY.local.md`:** gitignored personal project-scope notes (the `CLAUDE.local.md` / `.aider.conf.yml` niche).
+5. **Decay metadata:** per-entry last-confirmed dates; `/memory stale` listing — frequency/time-informed *suggestions*, never automatic deletion (research 01).
+6. **Cross-harness import:** read-only ingestion of `~/.claude/projects/<project>/memory/` for users migrating from Claude Code.

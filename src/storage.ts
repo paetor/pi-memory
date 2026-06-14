@@ -9,12 +9,24 @@ export interface MemoryConfig {
   maxInjectLines: number;
   /** Max bytes of MEMORY.md injected per scope. */
   maxInjectBytes: number;
+  /** Use ClawVM-style resident-set injection when a valid page table exists. */
+  pageTableInjection: boolean;
+  /** Prompt-token budget for selected page representations. */
+  maxMemoryTokens: number;
+  /** Persist JSONL traces for residency/writeback decisions and faults. */
+  traceEnabled: boolean;
+  /** Reject unsafe/destructive writeback operations instead of best-effort writing. */
+  strictWriteback: boolean;
 }
 
 export const DEFAULT_CONFIG: MemoryConfig = {
   enabled: true,
   maxInjectLines: 200,
   maxInjectBytes: 8192,
+  pageTableInjection: true,
+  maxMemoryTokens: 4096,
+  traceEnabled: true,
+  strictWriteback: true,
 };
 
 /** A capped read of a MEMORY.md index file. */
@@ -152,6 +164,14 @@ export function loadConfig(globalDir: string, projectDir?: string): MemoryConfig
     if (typeof candidate.maxInjectBytes === "number" && candidate.maxInjectBytes > 0) {
       config.maxInjectBytes = candidate.maxInjectBytes;
     }
+    if (typeof candidate.pageTableInjection === "boolean") {
+      config.pageTableInjection = candidate.pageTableInjection;
+    }
+    if (typeof candidate.maxMemoryTokens === "number" && candidate.maxMemoryTokens > 0) {
+      config.maxMemoryTokens = candidate.maxMemoryTokens;
+    }
+    if (typeof candidate.traceEnabled === "boolean") config.traceEnabled = candidate.traceEnabled;
+    if (typeof candidate.strictWriteback === "boolean") config.strictWriteback = candidate.strictWriteback;
   }
   return config;
 }

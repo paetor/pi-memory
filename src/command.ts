@@ -7,6 +7,7 @@ import {
   readPageTable,
   rebuildPageTableFromMarkdown,
 } from "./page-table.ts";
+import { readRecentTraces, readTrace, recentFaults } from "./trace.ts";
 import {
   globalMemoryDir,
   listMemoryFiles,
@@ -15,6 +16,7 @@ import {
   readIndex,
   type IndexCache,
 } from "./storage.ts";
+import { flushWritebackJournal, readWritebackJournal, stageAppendMemory } from "./writeback.ts";
 
 export interface MemoryState {
   /** Session toggle; undefined until resolved from the --no-memory flag. */
@@ -47,7 +49,8 @@ function scopeReport(label: string, dir: string, cache: IndexCache, config: Retu
   const lines = [`${label}: ${dir}/`];
   const files = listMemoryFiles(dir);
   const pageTable = readPageTable(dir);
-  if (files.length === 0 && pageTable.missing) {
+  const journal = readWritebackJournal(dir);
+  if (files.length === 0 && pageTable.missing && journal.length === 0) {
     lines.push("  (empty — nothing saved yet)");
     return lines;
   }
@@ -65,6 +68,10 @@ function scopeReport(label: string, dir: string, cache: IndexCache, config: Retu
   if (!pageTable.missing) {
     const status = pageTable.errors.length > 0 ? `, ${pageTable.errors.length} error(s)` : "";
     lines.push(`  page-table.jsonl (${pageTable.pages.length} page(s)${status})`);
+  }
+  if (journal.length > 0) {
+    const pending = journal.filter((operation) => operation.status === "pending").length;
+    lines.push(`  writeback-journal.jsonl (${journal.length} operation(s), ${pending} pending)`);
   }
   return lines;
 }
@@ -115,27 +122,91 @@ function verifyScope(label: string, dir: string, scope: MemoryScope): string[] {
   return lines;
 }
 
+function flushScope(label: string, dir: string, scope: MemoryScope, config: ReturnType<typeof loadConfig>): string[] {
+  const result = flushWritebackJournal(dir, scope, config);
+  const lines = [`${label}: ${dir}/`];
+  lines.push(`  committed ${result.committed.length}, rejected ${result.rejected.length}, pending ${result.pending.length}`);
+  for (const fault of result.faults.slice(0, MAX_LISTED_ERRORS)) {
+    lines.push(`  fault: ${fault.type}: ${fault.reason}`);
+  }
+  return lines;
+}
+
+function faultsReport(scopes: ResolvedScopes): string[] {
+  const lines = ["Persistent memory recent faults:"];
+  const faults = recentFaults(scopes.globalDir, 30);
+  if (faults.length === 0) {
+    lines.push("  (none recorded)");
+    return lines;
+  }
+  for (const { trace, fault } of faults) {
+    lines.push(`  - ${trace.id} ${fault.type}${fault.pageId ? ` ${fault.pageId}` : ""}: ${fault.reason}`);
+  }
+  return lines;
+}
+
+function traceReport(scopes: ResolvedScopes, traceId: string): string[] {
+  const trace = readTrace(scopes.globalDir, traceId);
+  if (!trace) return [`Trace not found: ${traceId}`];
+  return [
+    `Trace ${trace.id}`,
+    `kind: ${trace.kind}`,
+    `timestamp: ${trace.timestamp}`,
+    `summary: ${trace.summary}`,
+    `faults: ${trace.faults.length}`,
+    JSON.stringify(trace.details, null, 2),
+  ];
+}
+
+function tracesReport(scopes: ResolvedScopes): string[] {
+  const result = readRecentTraces(scopes.globalDir, 10);
+  const lines = ["Persistent memory recent traces:"];
+  if (result.traces.length === 0) lines.push("  (none recorded)");
+  for (const trace of result.traces) {
+    lines.push(`  - ${trace.id} ${trace.kind} faults=${trace.faults.length} ${trace.summary}`);
+  }
+  for (const error of result.errors.slice(0, MAX_LISTED_ERRORS)) lines.push(`  error: ${error}`);
+  return lines;
+}
+
+function stageRemember(scopes: ResolvedScopes, raw: string): string[] {
+  const match = raw.match(/^remember\s+(global|project)\s+([\s\S]+)$/i);
+  const scopeToken = match?.[1]?.toLowerCase();
+  const text = match?.[2]?.trim() ?? "";
+  if ((scopeToken !== "global" && scopeToken !== "project") || text.length === 0) {
+    return ["Usage: /memory remember global|project <memory text>"];
+  }
+  if (scopeToken === "project" && !scopes.projectDir) {
+    return ["Project memory is inactive because this project is untrusted."];
+  }
+  const dir = scopeToken === "global" ? scopes.globalDir : scopes.projectDir;
+  if (!dir) return ["Memory scope unavailable."];
+  const op = stageAppendMemory(dir, scopeToken, text, [{ kind: "manual" }]);
+  return [`Staged ${scopeToken} memory operation ${op.id}. Run /memory flush to commit.`];
+}
+
 export function registerMemoryCommand(pi: ExtensionAPI, state: MemoryState, cache: IndexCache): void {
   pi.registerCommand("memory", {
     description: "Show persistent memory status, or toggle with: /memory on|off",
     getArgumentCompletions: (prefix: string) => {
-      const items = ["on", "off", "pages", "verify"]
+      const items = ["on", "off", "pages", "verify", "faults", "traces", "trace", "flush", "remember"]
         .filter((v) => v.startsWith(prefix))
         .map((v) => ({ value: v, label: v }));
       return items.length > 0 ? items : null;
     },
     handler: async (args: string, ctx: ExtensionCommandContext) => {
-      const arg = args.trim().toLowerCase();
-      if (arg === "on" || arg === "off") {
-        state.enabled = arg === "on";
-        emit(ctx, `Memory injection ${arg} for this session.`);
+      const raw = args.trim();
+      const command = raw.split(/\s+/, 1)[0]?.toLowerCase() ?? "";
+      if (command === "on" || command === "off") {
+        state.enabled = command === "on";
+        emit(ctx, `Memory injection ${command} for this session.`);
         return;
       }
 
       const scopes = resolveScopes(ctx);
       const config = loadConfig(scopes.globalDir, scopes.projectDir);
 
-      if (arg === "pages") {
+      if (command === "pages") {
         const lines = ["Persistent memory pages:"];
         lines.push(...pagesReportForScope("Global", scopes.globalDir, "global"));
         if (scopes.projectDir) {
@@ -147,7 +218,7 @@ export function registerMemoryCommand(pi: ExtensionAPI, state: MemoryState, cach
         return;
       }
 
-      if (arg === "verify") {
+      if (command === "verify") {
         const lines = ["Persistent memory page-table verification:"];
         lines.push(...verifyScope("Global", scopes.globalDir, "global"));
         if (scopes.projectDir) {
@@ -159,10 +230,40 @@ export function registerMemoryCommand(pi: ExtensionAPI, state: MemoryState, cach
         return;
       }
 
+      if (command === "flush") {
+        const lines = ["Persistent memory writeback flush:"];
+        lines.push(...flushScope("Global", scopes.globalDir, "global", config));
+        if (scopes.projectDir) lines.push(...flushScope("Project", scopes.projectDir, "project", config));
+        else lines.push("Project: (untrusted directory — project memory inactive)");
+        emit(ctx, lines.join("\n"));
+        return;
+      }
+
+      if (command === "faults") {
+        emit(ctx, faultsReport(scopes).join("\n"));
+        return;
+      }
+
+      if (command === "traces") {
+        emit(ctx, tracesReport(scopes).join("\n"));
+        return;
+      }
+
+      if (command === "trace") {
+        const traceId = raw.split(/\s+/, 2)[1];
+        emit(ctx, traceId ? traceReport(scopes, traceId).join("\n") : "Usage: /memory trace <trace-id>");
+        return;
+      }
+
+      if (command === "remember") {
+        emit(ctx, stageRemember(scopes, raw).join("\n"));
+        return;
+      }
+
       const lines: string[] = [];
       const off = state.enabled === false || !config.enabled;
       lines.push(
-        `Persistent memory: ${off ? "OFF" : "on"} (caps: ${config.maxInjectLines} lines / ${formatBytes(config.maxInjectBytes)} per scope)`,
+        `Persistent memory: ${off ? "OFF" : "on"} (caps: ${config.maxInjectLines} lines / ${formatBytes(config.maxInjectBytes)} per scope; page budget: ${config.maxMemoryTokens} tokens)`,
       );
       lines.push(...scopeReport("Global", scopes.globalDir, cache, config));
       if (scopes.projectDir) {
