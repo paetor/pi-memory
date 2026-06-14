@@ -65,3 +65,9 @@ npm install
 npm run typecheck
 npm test
 ```
+
+Provider-backed memory smoke tests are opt-in because they call real pi agents:
+
+```bash
+npm run test:provider
+```

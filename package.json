@@ -18,6 +18,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test test/*.test.ts",
+    "test:provider": "PI_MEMORY_PROVIDER_TESTS=1 node --experimental-strip-types --test test/provider-agent.test.ts",
     "prepublishOnly": "npm run typecheck && npm test"
   },
   "peerDependencies": {

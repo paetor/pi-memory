@@ -77,15 +77,34 @@ npm run typecheck
 npm test
 ```
 
-## Future black-box pi-agent tests
+## Provider-backed pi-agent tests
 
-Provider-backed pi-agent tests should stay outside the default unit suite because they are slower, nondeterministic, and require model access. Recommended scenarios:
+Provider-backed pi-agent tests stay outside routine deterministic assertions unless explicitly enabled because they are slower, nondeterministic, and require model access. The suite in `test/provider-agent.test.ts` disables tools, context files, skills, prompt templates, themes, sessions, and unrelated extensions, then loads only this package's extension. This isolates the question: can a real provider-backed pi agent answer from injected persistent memory and memory instructions?
 
-1. **Memory utilization:** seed a memory fact, disable tools/context files, ask a question whose only source is injected memory.
-2. **Scope correctness:** run trusted vs. untrusted project sessions and verify project memory appears only when trusted.
-3. **Lifecycle durability:** write a durable fact, start a new no-session/clean session, verify recall.
-4. **Saturation:** create oversized memory, verify important constraints still answer correctly.
-5. **Error visibility:** corrupt a sidecar, run `/memory pages`, verify the fault is visible.
+Run with:
+
+```bash
+npm run test:provider
+```
+
+Optional environment variables:
+
+```bash
+PI_MEMORY_PROVIDER=google PI_MEMORY_MODEL='gemini*' npm run test:provider
+PI_BIN=/path/to/pi npm run test:provider
+```
+
+Current black-box scenarios:
+
+1. **Memory utilization:** ask package-manager questions whose only enabled source is injected memory.
+2. **Instruction utilization:** ask whether to write `AGENTS.md`, store project secrets, use topic files, archive stale entries, and avoid duplicating code/git history.
+
+Recommended future scenarios:
+
+1. **Scope correctness:** run trusted vs. untrusted project sessions and verify project memory appears only when trusted.
+2. **Lifecycle durability:** write a durable fact, start a new no-session/clean session, verify recall.
+3. **Saturation:** create oversized memory, verify important constraints still answer correctly.
+4. **Error visibility:** corrupt a sidecar, run `/memory pages`, verify the fault is visible.
 
 A useful headline score for black-box runs is:
 
