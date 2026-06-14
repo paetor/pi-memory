@@ -1,14 +1,13 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { join } from "node:path";
 import { registerMemoryCommand, type MemoryState } from "./command.ts";
-import { buildMemoryBlock } from "./inject.ts";
+import { buildRuntimeMemoryBlock } from "./resident-inject.ts";
 import {
   createIndexCache,
   globalMemoryDir,
   loadConfig,
   projectMemoryDir,
-  readIndex,
 } from "./storage.ts";
+import { flushWritebackJournal } from "./writeback.ts";
 
 export default function (pi: ExtensionAPI) {
   pi.registerFlag("no-memory", {
@@ -29,16 +28,39 @@ export default function (pi: ExtensionAPI) {
     const config = loadConfig(globalDir, projectDir);
     if (!config.enabled) return;
 
-    const block = buildMemoryBlock({
-      globalDir,
-      projectDir,
-      globalIndex: readIndex(join(globalDir, "MEMORY.md"), config, cache),
-      projectIndex: projectDir
-        ? readIndex(join(projectDir, "MEMORY.md"), config, cache)
-        : undefined,
-    });
+    const block = buildRuntimeMemoryBlock({ globalDir, projectDir, config, cache });
     return { systemPrompt: `${event.systemPrompt}\n\n${block}` };
   });
 
+  pi.on("session_shutdown", (_event, ctx) => {
+    flushRuntimeMemory(ctx.cwd, ctx.isProjectTrusted());
+  });
+
+  pi.on("session_before_compact", (_event, ctx) => {
+    flushRuntimeMemory(ctx.cwd, ctx.isProjectTrusted());
+  });
+
+  pi.on("session_before_switch", (_event, ctx) => {
+    flushRuntimeMemory(ctx.cwd, ctx.isProjectTrusted());
+  });
+
   registerMemoryCommand(pi, state, cache);
+}
+
+function flushRuntimeMemory(cwd: string, projectTrusted: boolean): void {
+  const globalDir = globalMemoryDir();
+  const projectDir = projectTrusted ? projectMemoryDir(cwd) : undefined;
+  const config = loadConfig(globalDir, projectDir);
+  if (!config.enabled) return;
+
+  safeFlush(globalDir, "global", config);
+  if (projectDir) safeFlush(projectDir, "project", config);
+}
+
+function safeFlush(dir: string, scope: "global" | "project", config: ReturnType<typeof loadConfig>): void {
+  try {
+    flushWritebackJournal(dir, scope, config);
+  } catch {
+    // Lifecycle hooks should never fail the surrounding pi session.
+  }
 }
