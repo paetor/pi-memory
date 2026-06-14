@@ -39,6 +39,8 @@ pi -e ./src/index.ts
 There is nothing to set up. Tell pi things like "remember that we use pnpm here" — or just work; the agent saves what seems durable.
 
 - `/memory` — show both scopes: files, sizes, what's injected vs. capped, trust state.
+- `/memory pages` — preview ClawVM-style typed pages derived from `MEMORY.md` and page-table sidecar status.
+- `/memory verify` — rebuild `page-table.jsonl` sidecars from current `MEMORY.md` files.
 - `/memory off` / `/memory on` — toggle injection for the current session.
 - `pi --no-memory` — start with injection disabled.
 

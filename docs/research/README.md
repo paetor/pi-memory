@@ -12,6 +12,7 @@ Conducted 2026-06-11 via a multi-agent deep-research workflow (5 search angles, 
 | [02-pi-extension-api.md](02-pi-extension-api.md) | pi's extension API, lifecycle events, persistence primitives, directory/scoping conventions |
 | [03-prior-art.md](03-prior-art.md) | Claude Code's two-tier memory design, Codex/Cursor/Aider conventions, MemGPT/Mem0 lessons |
 | [04-pi-api-details.md](04-pi-api-details.md) | Gap-fill from full pi-mono docs: exact API signatures, compaction internals, packaging, skills |
+| [05-agent-harness-memory-papers.md](05-agent-harness-memory-papers.md) | arXiv reading list on harness-managed memory, retrieval control, memory benchmarks, and orchestration |
 
 ## Synthesis — what the research supports
 

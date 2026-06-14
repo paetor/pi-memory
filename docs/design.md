@@ -99,7 +99,9 @@ Rationale:
 
 `pi.registerCommand("memory", …)` — works in TUI and RPC (guard dialogs with `ctx.hasUI`):
 
-- `/memory` — show both scopes: file list, per-file size, injected vs capped bytes, trust state, and absolute paths (so the user can open them).
+- `/memory` — show both scopes: file list, per-file size, injected vs capped bytes, page-table sidecar status, trust state, and absolute paths (so the user can open them).
+- `/memory pages` — preview the ClawVM-style typed pages currently derivable from `MEMORY.md`, and show whether `page-table.jsonl` exists/validates.
+- `/memory verify` — rebuild `page-table.jsonl` sidecars from current `MEMORY.md` files. This is the first lightweight ClawVM-style metadata layer; markdown remains canonical.
 - `/memory off | on` — toggle injection for the current session (in-memory flag; nothing written).
 - Also `pi.registerFlag("no-memory", { type: "boolean", default: false })` to start with injection disabled.
 
