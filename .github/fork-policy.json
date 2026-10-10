@@ -1,0 +1,9 @@
+{
+  "upstream": "josephkern/pi-memory",
+  "upstreamBranch": "main",
+  "upstreamBase": "312627ffc5a47de690b3066276009e7d651f8729",
+  "upstreamVersion": "0.3.0",
+  "fork": "paetor/pi-memory",
+  "branch": "account-routing",
+  "npmPublication": false
+}

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { gitFixture } from "./helpers.ts";
+import { projectMemoryDir } from "../src/storage.ts";
 import { join } from "node:path";
 import { test } from "node:test";
 
@@ -38,7 +40,7 @@ const CASES: ProviderCase[] = [
   },
   {
     id: 4,
-    expected: "yes",
+    expected: "no",
     prompt: "From persistent memory instructions: Are project memory entries shared with the team? Reply exactly yes or no.",
   },
   {
@@ -79,7 +81,14 @@ test(
   () => {
     assert.equal(existsSync(EXTENSION_PATH), true, `missing extension at ${EXTENSION_PATH}`);
 
-    const results = CASES.map(runCase);
+    const { root, base } = gitFixture();
+    const globalDir = join(base, "global");
+    mkdirSync(globalDir);
+    writeFileSync(join(globalDir, "config.json"), JSON.stringify({ pageTableInjection: false, traceEnabled: false }));
+    const memory = projectMemoryDir(root)!;
+    mkdirSync(memory);
+    writeFileSync(join(memory, "MEMORY.md"), "## General\n- this project uses npm, not pnpm.\n");
+    const results = CASES.map(testCase => runCase(testCase, root, globalDir));
     const failures = results.filter((result) => !result.passed);
 
     console.log(formatResults(results));
@@ -94,9 +103,10 @@ test(
   },
 );
 
-function runCase(testCase: ProviderCase): ProviderResult {
+function runCase(testCase: ProviderCase, cwd: string, globalDir: string): ProviderResult {
   const output = execFileSync(PI_BIN, piArgs(testCase.prompt), {
-    cwd: process.cwd(),
+    cwd,
+    env: { ...process.env, PI_MEMORY_DIR: globalDir },
     encoding: "utf8",
     input: "",
     maxBuffer: 1024 * 1024,

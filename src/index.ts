@@ -8,6 +8,7 @@ import {
   projectMemoryDir,
 } from "./storage.ts";
 import { flushWritebackJournal } from "./writeback.ts";
+import { registerMemorySearch } from "./search.ts";
 
 export default function (pi: ExtensionAPI) {
   pi.registerFlag("no-memory", {
@@ -29,6 +30,11 @@ export default function (pi: ExtensionAPI) {
     if (!config.enabled) return;
 
     const block = buildRuntimeMemoryBlock({ globalDir, projectDir, config, cache });
+    const options = event.systemPromptOptions;
+    if (options && "sections" in options) {
+      options.appendSystemPrompt = [options.appendSystemPrompt, block].filter(Boolean).join("\n\n");
+      return;
+    }
     return { systemPrompt: `${event.systemPrompt}\n\n${block}` };
   });
 
@@ -45,6 +51,7 @@ export default function (pi: ExtensionAPI) {
   });
 
   registerMemoryCommand(pi, state, cache);
+  registerMemorySearch(pi);
 }
 
 function flushRuntimeMemory(cwd: string, projectTrusted: boolean): void {

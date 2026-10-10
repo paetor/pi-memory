@@ -177,7 +177,7 @@ function stageRemember(scopes: ResolvedScopes, raw: string): string[] {
     return ["Usage: /memory remember global|project <memory text>"];
   }
   if (scopeToken === "project" && !scopes.projectDir) {
-    return ["Project memory is inactive because this project is untrusted."];
+    return ["Project memory requires a trusted Git working tree."];
   }
   const dir = scopeToken === "global" ? scopes.globalDir : scopes.projectDir;
   if (!dir) return ["Memory scope unavailable."];
@@ -212,7 +212,7 @@ export function registerMemoryCommand(pi: ExtensionAPI, state: MemoryState, cach
         if (scopes.projectDir) {
           lines.push(...pagesReportForScope("Project", scopes.projectDir, "project"));
         } else {
-          lines.push("Project: (untrusted directory — project memory inactive)");
+          lines.push("Project: (no trusted Git working tree — project memory inactive)");
         }
         emit(ctx, lines.join("\n"));
         return;
@@ -224,7 +224,7 @@ export function registerMemoryCommand(pi: ExtensionAPI, state: MemoryState, cach
         if (scopes.projectDir) {
           lines.push(...verifyScope("Project", scopes.projectDir, "project"));
         } else {
-          lines.push("Project: (untrusted directory — project memory inactive)");
+          lines.push("Project: (no trusted Git working tree — project memory inactive)");
         }
         emit(ctx, lines.join("\n"));
         return;
@@ -234,7 +234,7 @@ export function registerMemoryCommand(pi: ExtensionAPI, state: MemoryState, cach
         const lines = ["Persistent memory writeback flush:"];
         lines.push(...flushScope("Global", scopes.globalDir, "global", config));
         if (scopes.projectDir) lines.push(...flushScope("Project", scopes.projectDir, "project", config));
-        else lines.push("Project: (untrusted directory — project memory inactive)");
+        else lines.push("Project: (no trusted Git working tree — project memory inactive)");
         emit(ctx, lines.join("\n"));
         return;
       }
@@ -269,7 +269,7 @@ export function registerMemoryCommand(pi: ExtensionAPI, state: MemoryState, cach
       if (scopes.projectDir) {
         lines.push(...scopeReport("Project", scopes.projectDir, cache, config));
       } else {
-        lines.push("Project: (untrusted directory — project memory inactive)");
+        lines.push("Project: (no trusted Git working tree — project memory inactive)");
       }
       emit(ctx, lines.join("\n"));
     },

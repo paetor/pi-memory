@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { resolveGitMemoryScope } from "./git-scope.ts";
 
 export interface MemoryConfig {
   /** Master switch, settable from config.json in either scope. */
@@ -40,12 +41,14 @@ export interface IndexSnapshot {
   injectedBytes: number;
 }
 
-export function globalMemoryDir(): string {
-  return join(homedir(), ".pi", "agent", "memory");
+export function globalMemoryDir(env: NodeJS.ProcessEnv = process.env): string {
+  const expand = (value: string) => value.startsWith("~/") ? join(homedir(), value.slice(2)) : value;
+  if (env.PI_MEMORY_DIR) return resolve(expand(env.PI_MEMORY_DIR));
+  return join(resolve(expand(env.PI_CODING_AGENT_DIR ?? join(homedir(), ".pi", "agent"))), "memory");
 }
 
-export function projectMemoryDir(cwd: string): string {
-  return join(cwd, ".pi", "memory");
+export function projectMemoryDir(cwd: string): string | undefined {
+  return resolveGitMemoryScope(cwd)?.memoryDir;
 }
 
 /**

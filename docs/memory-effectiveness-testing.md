@@ -69,6 +69,10 @@ The automated Node test suite now includes:
 - `test/page-table.test.ts` — page derivation, page-table sidecar validation, stable IDs, malformed JSONL handling.
 - `test/residency.test.ts` — deterministic resident-set selection, pinned-page priority, upgrades, demanded pages, invariant pressure.
 - `test/effectiveness.test.ts` — utilization, saturation, and error metrics over deterministic residency decisions.
+- `test/git-scope.test.ts` — canonical Git roots, linked worktrees, private storage and non-Git behavior.
+- `test/search.test.ts` — scoped QMD selection, archive opt-in, binding/output validation and serialized indexing.
+- `scripts/sdk-smoke.mjs` — actual Pi SDK loading, trusted/untrusted injection, structured prompt preservation and fixture writeback.
+- `test/qmd-integration.test.ts` — opt-in isolated actual QMD keyword/semantic/deep retrieval, scope isolation and refresh.
 
 Run with:
 
@@ -79,7 +83,7 @@ npm test
 
 ## Provider-backed pi-agent tests
 
-Provider-backed pi-agent tests stay outside routine deterministic assertions unless explicitly enabled because they are slower, nondeterministic, and require model access. The suite in `test/provider-agent.test.ts` disables tools, context files, skills, prompt templates, themes, sessions, and unrelated extensions, then loads only this package's extension. This isolates the question: can a real provider-backed pi agent answer from injected persistent memory and memory instructions?
+Provider-backed pi-agent tests stay outside routine deterministic assertions unless explicitly enabled because they are slower, nondeterministic, and require model access. The suite in `test/provider-agent.test.ts` seeds an owned temporary Git repository/private memory and an isolated global memory root, disables tools, context files, skills, prompt templates, themes, sessions, and unrelated extensions, then loads only this package's extension. This isolates the question: can a real provider-backed pi agent answer from injected persistent memory and memory instructions?
 
 Run with:
 

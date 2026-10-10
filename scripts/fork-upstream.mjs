@@ -1,0 +1,10 @@
+import { execFileSync } from 'node:child_process';
+import { appendFileSync, readFileSync } from 'node:fs';
+const policy = JSON.parse(readFileSync(new URL('../.github/fork-policy.json', import.meta.url), 'utf8'));
+if (policy.upstream !== 'josephkern/pi-memory' || policy.upstreamBranch !== 'main' || !/^[a-f0-9]{40}$/.test(policy.upstreamBase)) throw new Error('Invalid frozen upstream policy');
+const output = execFileSync('git', ['ls-remote', 'https://github.com/josephkern/pi-memory.git', 'refs/heads/main'], { encoding: 'utf8', timeout: 30000 });
+const head = output.trim().split(/\s+/)[0];
+if (!/^[a-f0-9]{40}$/.test(head)) throw new Error('Invalid upstream head');
+const report = `Upstream: ${policy.upstream}\nIntegrated base: ${policy.upstreamBase}\nObserved main: ${head}\nStatus: ${head === policy.upstreamBase ? 'current' : 'review required'}\nNo merge, source change or publication performed.\n`;
+console.log(report);
+if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, '```text\n' + report + '```\n');

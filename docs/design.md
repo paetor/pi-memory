@@ -1,5 +1,7 @@
 # pi-memory — Design
 
+> Retained upstream design. The paetor fork replaces cwd-local tracked project memory with private Git-common-directory memory and adds scoped QMD search. See [fork behavior](../README.md) and [maintenance](fork-maintenance.md) for the current storage/search contracts.
+
 A pi extension that gives the agent **persistent, file-based memory** across sessions, with a global (user) scope and a project scope stored **in the repository**. Written in TypeScript against pi's `ExtensionAPI`.
 
 Grounded in `docs/research/` (all cited facts verified against primary sources; see research README for provenance).

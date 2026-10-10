@@ -158,7 +158,8 @@ test("buildMemoryBlock includes both scopes and truncation notice", () => {
   assert.ok(block.includes("- global fact"));
   assert.ok(block.includes("- project fact"));
   assert.ok(block.includes("Index truncated: showing 8000 of 9000 bytes"));
-  assert.ok(block.includes("shared with the team"));
+  assert.ok(block.includes("private, untracked"));
+  assert.ok(block.includes("linked worktrees"));
 });
 
 test("buildMemoryBlock is deterministic for identical inputs", () => {

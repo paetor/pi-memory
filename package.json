@@ -1,7 +1,8 @@
 {
-  "name": "@josephakern/pi-memory",
-  "version": "0.3.0",
-  "description": "Persistent file-based memory for the pi coding agent: a capped always-injected MEMORY.md index per scope (global and in-repo project) plus on-demand topic files.",
+  "name": "@paetor/pi-memory",
+  "version": "0.3.0-paetor.1",
+  "private": true,
+  "description": "Josephkern memory fork with private Git-based project scopes, linked-worktree sharing and scoped local QMD search.",
   "keywords": [
     "pi-package",
     "pi",
@@ -19,19 +20,24 @@
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test test/*.test.ts",
     "test:provider": "PI_MEMORY_PROVIDER_TESTS=1 node --experimental-strip-types --test test/provider-agent.test.ts",
+    "test:qmd": "PI_MEMORY_QMD_TESTS=1 node --experimental-strip-types --test test/qmd-integration.test.ts",
+    "test:sdk": "node scripts/sdk-smoke.mjs",
+    "check": "npm run typecheck && npm test && npm run test:sdk",
     "prepublishOnly": "npm run typecheck && npm test"
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*"
+    "@earendil-works/pi-coding-agent": ">=1.0.0",
+    "typebox": "*"
   },
+  "engines": { "node": ">=22.19.0" },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "^0.79.1",
-    "@types/node": "^22.0.0",
-    "typescript": "^5.6.0"
+    "@earendil-works/pi-coding-agent": "1.1.0",
+    "@types/node": "22.19.15",
+    "typescript": "5.9.3"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/josephkern/pi-memory.git"
+    "url": "git+https://github.com/paetor/pi-memory.git"
   },
   "files": [
     "src",
@@ -41,8 +47,8 @@
     "extensions"
   ],
   "author": "Joseph Kern <joseph.a.kern@gmail.com>",
-  "homepage": "https://github.com/josephkern/pi-memory#readme",
+  "homepage": "https://github.com/paetor/pi-memory#readme",
   "bugs": {
-    "url": "https://github.com/josephkern/pi-memory/issues"
+    "url": "https://github.com/paetor/pi-memory/issues"
   }
 }
